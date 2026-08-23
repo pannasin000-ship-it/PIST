@@ -1,0 +1,108 @@
+-- โหลด UI Library เบื้องต้นสำหรับสร้างเมนู
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "Delta Custom Menu", HidePremium = false, SaveConfig = true, ConfigFolder = "DeltaConfig"})
+
+-- สร้าง Tab หลัก
+local MainTab = Window:MakeTab({
+    Name = "ฟังก์ชันหลัก",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- ตัวแปรสถานะ
+local infiniteJumpEnabled = false
+local speedValue = 16
+local espEnabled = false
+
+-- 1. ฟังก์ชันกระโดดไม่จำกัด (Infinite Jump)
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if infiniteJumpEnabled then
+        local player = game.Players.LocalPlayer
+        if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+            player.Character.Humanoid:ChangeState(Enum.HumanoidState.Jumping)
+        end
+    end
+end)
+
+MainTab:AddToggle({
+    Name = "กระโดดไม่จำกัด (Inf Jump)",
+    Default = false,
+    Callback = function(Value)
+        infiniteJumpEnabled = Value
+    end
+})
+
+-- 2. ฟังก์ชันปรับความเร็ววิ่ง (WalkSpeed 1-100)
+MainTab:AddSlider({
+    Name = "ความเร็วในการวิ่ง (Speed)",
+    Min = 1,
+    Max = 100,
+    Default = 16,
+    Color = Color3.fromRGB(255,255,255),
+    Flag = "SpeedSlider",
+    ValueName = "Speed",
+    Callback = function(Value)
+        speedValue = Value
+    end
+})
+
+-- ลูปอัปเดตความเร็วตลอดเวลา
+game:GetService("RunService").Heartbeat:Connect(function()
+    local player = game.Players.LocalPlayer
+    if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+        if player.Character.Humanoid.WalkSpeed ~= 16 then -- ปรับเฉพาะตอนเปิดใช้งานหรือเปลี่ยนค่า
+            player.Character.Humanoid.WalkSpeed = speedValue
+        end
+    end
+end)
+
+-- 3. ฟังก์ชัน ESP All (มองทะลุตัวละครอื่น)
+local function toggleESP(state)
+    espEnabled = state
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer then
+            if state then
+                -- สร้าง Highlight ถ้ายังไม่มี
+                if player.Character and not player.Character:FindFirstChild("EspHighlight") then
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "EspHighlight"
+                    highlight.Adornee = player.Character
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.Parent = player.Character
+                end
+            else
+                -- ลบ Highlight ออกเมื่อปิด
+                if player.Character and player.Character:FindFirstChild("EspHighlight") then
+                    player.Character.EspHighlight:Destroy()
+                end
+            end
+        end
+    end
+end
+
+MainTab:AddToggle({
+    Name = "มองทะลุ (ESP All)",
+    Default = false,
+    Callback = function(Value)
+        toggleESP(Value)
+    end
+})
+
+-- อัปเดต ESP สำหรับผู้เล่นที่เกิดใหม่
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        if espEnabled then
+            task.wait(1)
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "EspHighlight"
+            highlight.Adornee = character
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.Parent = character
+        end
+    end)
+end)
+
+-- เริ่มต้นใช้งาน UI
+OrionLib:Init()
